@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Acceptance — VX-360 Networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --vx-red: #B71C1C;
+    --vx-red-light: #D32F2F;
+    --vx-blue: #1565C0;
+    --vx-blue-light: #1E88E5;
+    --vx-dark: #0F1419;
+    --vx-gray-50: #F8FAFC;
+    --vx-gray-100: #F1F5F9;
+    --vx-gray-200: #E2E8F0;
+    --vx-gray-400: #94A3B8;
+    --vx-gray-600: #475569;
+    --vx-gray-800: #1E293B;
+    --vx-green: #16A34A;
+    --vx-amber: #D97706;
+    --font-display: 'DM Serif Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--vx-gray-50);
+    color: var(--vx-gray-800);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== LOADING STATE ===== */
+  .loader-screen {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--vx-dark);
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 24px;
+    transition: opacity 0.5s;
+  }
+  .loader-screen.hide { opacity: 0; pointer-events: none; }
+  .loader-logo { font-family: var(--font-display); font-size: 28px; color: white; letter-spacing: 3px; }
+  .loader-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.15);
+    border-top-color: var(--vx-red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== HEADER ===== */
+  .page-header {
+    background: linear-gradient(135deg, var(--vx-dark) 0%, #1a2332 100%);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--vx-red), var(--vx-blue-light), var(--vx-red));
+  }
+  .header-inner {
+    max-width: 900px; margin: 0 auto; padding: 32px 24px 36px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .header-brand {
+    font-family: var(--font-display);
+    font-size: 22px; color: white; letter-spacing: 3px;
+  }
+  .header-brand span { color: var(--vx-red-light); }
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 24px; padding: 8px 18px;
+    font-size: 12px; font-weight: 700; color: var(--vx-gray-400);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .header-badge .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--vx-green);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content {
+    max-width: 900px; margin: 0 auto; padding: 32px 24px 60px;
+    opacity: 0; transform: translateY(20px);
+    animation: fadeUp 0.6s ease 0.3s forwards;
+  }
+  @keyframes fadeUp { to { opacity: 1; transform: none; } }
+
+  /* ===== QUOTE HEADER CARD ===== */
+  .quote-header-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--vx-gray-200);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .quote-meta-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .quote-title {
+    font-family: var(--font-display);
+    font-size: 28px; color: var(--vx-dark); line-height: 1.2;
+  }
+  .quote-id {
+    font-size: 13px; color: var(--vx-gray-400); margin-top: 4px;
+    font-weight: 600; letter-spacing: 0.5px;
+  }
+  .quote-status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 16px; border-radius: 20px;
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-pending { background: #FEF3C7; color: #92400E; }
+  .badge-signed { background: #D1FAE5; color: #065F46; }
+  .badge-expired { background: #FEE2E2; color: #991B1B; }
+
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+    margin-top: 24px; padding-top: 24px;
+    border-top: 1px solid var(--vx-gray-100);
+  }
+  .info-block {}
+  .info-label {
+    font-size: 10px; font-weight: 800; color: var(--vx-gray-400);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .info-value { font-size: 14px; font-weight: 600; color: var(--vx-gray-800); line-height: 1.5; }
+  .info-value small { font-weight: 400; color: var(--vx-gray-600); font-size: 12px; display: block; }
+
+  /* ===== LINE ITEMS TABLE ===== */
+  .items-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--vx-gray-200);
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .items-header {
+    background: linear-gradient(135deg, var(--vx-blue), var(--vx-blue-light));
+    padding: 16px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .items-header-title {
+    font-size: 14px; font-weight: 800; color: white;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .items-count {
+    font-size: 12px; background: rgba(255,255,255,0.2); color: white;
+    padding: 3px 12px; border-radius: 12px; font-weight: 700;
+  }
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table th {
+    text-align: left; padding: 12px 24px;
+    font-size: 10px; font-weight: 800; color: var(--vx-gray-400);
+    text-transform: uppercase; letter-spacing: 1px;
+    background: var(--vx-gray-50); border-bottom: 1px solid var(--vx-gray-200);
+  }
+  .items-table th:nth-child(2), .items-table th:nth-child(3), .items-table th:nth-child(4) { text-align: center; }
+  .items-table th:last-child { text-align: right; }
+  .items-table td {
+    padding: 14px 24px; font-size: 14px; border-bottom: 1px solid var(--vx-gray-100);
+  }
+  .items-table td:nth-child(2), .items-table td:nth-child(3), .items-table td:nth-child(4) { text-align: center; }
+  .items-table td:last-child { text-align: right; }
+  .item-name { font-weight: 600; color: var(--vx-dark); }
+  .item-disc { font-size: 11px; color: var(--vx-green); font-weight: 700; }
+  .items-table tr:last-child td { border-bottom: none; }
+  .subtotal-row { background: var(--vx-gray-50); }
+  .subtotal-row td { font-weight: 800 !important; padding: 12px 24px; border-top: 2px solid var(--vx-blue); }
+
+  /* Optional items */
+  .optional-card {
+    background: white; border-radius: 16px;
+    border: 1px solid #FDE68A; overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .optional-header {
+    background: linear-gradient(135deg, #F59E0B, #FBBF24);
+    padding: 14px 32px;
+  }
+  .optional-title {
+    font-size: 13px; font-weight: 800; color: #78350F;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .optional-note {
+    font-size: 12px; color: #92400E; padding: 12px 32px;
+    border-bottom: 1px solid #FDE68A; font-style: italic;
+  }
+
+  /* ===== TOTALS CARD ===== */
+  .totals-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--vx-gray-200);
+    overflow: hidden;
+    margin-bottom: 28px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .totals-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 32px; border-bottom: 1px solid var(--vx-gray-100);
+    font-size: 14px;
+  }
+  .totals-row:last-child { border-bottom: none; }
+  .totals-label { color: var(--vx-gray-600); font-weight: 500; }
+  .totals-value { font-weight: 700; color: var(--vx-dark); }
+  .totals-value.recurring { color: var(--vx-red); }
+  .totals-value.discount { color: var(--vx-green); }
+  .totals-grand {
+    background: var(--vx-dark); color: white;
+    padding: 18px 32px;
+    font-size: 16px; font-weight: 900;
+  }
+  .totals-grand .totals-label { color: rgba(255,255,255,0.7); }
+  .totals-grand .totals-value { color: white; font-size: 20px; }
+
+  /* ===== SIGNATURE SECTION ===== */
+  .sig-section {
+    background: white;
+    border-radius: 16px;
+    border: 2px solid var(--vx-blue);
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(21,101,192,0.12);
+  }
+  .sig-header {
+    background: linear-gradient(135deg, var(--vx-blue), var(--vx-blue-light));
+    padding: 20px 32px;
+    text-align: center;
+  }
+  .sig-header-title {
+    font-family: var(--font-display);
+    font-size: 22px; color: white;
+  }
+  .sig-header-sub {
+    font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 4px;
+  }
+  .sig-body { padding: 28px 32px; }
+
+  .sig-fields {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 24px;
+  }
+  .sig-field label {
+    display: block; font-size: 11px; font-weight: 800; color: var(--vx-gray-400);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .sig-field input {
+    width: 100%; padding: 12px 16px; font-size: 15px; font-family: var(--font-body);
+    border: 2px solid var(--vx-gray-200); border-radius: 10px;
+    transition: border-color 0.2s; background: var(--vx-gray-50);
+    font-weight: 500;
+  }
+  .sig-field input:focus {
+    outline: none; border-color: var(--vx-blue); background: white;
+  }
+
+  .sig-pad-label {
+    font-size: 11px; font-weight: 800; color: var(--vx-gray-400);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+  }
+  .sig-pad-wrap {
+    position: relative;
+    border: 2px dashed var(--vx-gray-200);
+    border-radius: 12px;
+    background: white;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .sig-pad-wrap:hover, .sig-pad-wrap.active { border-color: var(--vx-blue); }
+  .sig-pad-canvas { display: block; width: 100%; height: 160px; cursor: crosshair; }
+  .sig-pad-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px;
+    pointer-events: none; color: var(--vx-gray-400); font-size: 13px;
+    transition: opacity 0.2s;
+  }
+  .sig-pad-placeholder.hidden { opacity: 0; }
+  .sig-pad-placeholder svg { width: 28px; height: 28px; opacity: 0.4; }
+  .sig-clear {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--vx-gray-100); border: none; border-radius: 6px;
+    padding: 4px 10px; font-size: 11px; font-weight: 700; color: var(--vx-gray-600);
+    cursor: pointer; transition: background 0.2s;
+  }
+  .sig-clear:hover { background: var(--vx-gray-200); }
+
+  .sig-terms {
+    margin-top: 20px; padding: 16px 20px;
+    background: var(--vx-gray-50); border-radius: 10px;
+    font-size: 12px; color: var(--vx-gray-600); line-height: 1.6;
+  }
+  .sig-terms-check {
+    display: flex; align-items: flex-start; gap: 10px; margin-top: 12px;
+    cursor: pointer;
+  }
+  .sig-terms-check input { margin-top: 2px; accent-color: var(--vx-blue); width: 18px; height: 18px; cursor: pointer; }
+  .sig-terms-check span { font-weight: 600; color: var(--vx-gray-800); }
+
+  .sig-submit {
+    margin-top: 24px; width: 100%; padding: 18px;
+    font-size: 16px; font-weight: 800; font-family: var(--font-body);
+    color: white; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--vx-green), #22C55E);
+    cursor: pointer; transition: all 0.2s;
+    text-transform: uppercase; letter-spacing: 1px;
+    box-shadow: 0 4px 16px rgba(22,163,74,0.3);
+  }
+  .sig-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(22,163,74,0.4); }
+  .sig-submit:active { transform: translateY(0); }
+  .sig-submit:disabled {
+    background: var(--vx-gray-200); color: var(--vx-gray-400);
+    cursor: not-allowed; box-shadow: none; transform: none;
+  }
+
+  /* ===== SUCCESS STATE ===== */
+  .success-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(15,20,25,0.9);
+    display: none; align-items: center; justify-content: center;
+    animation: fadeIn 0.3s;
+  }
+  .success-overlay.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .success-card {
+    background: white; border-radius: 24px; padding: 48px;
+    max-width: 480px; width: 90%; text-align: center;
+    animation: scaleUp 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  }
+  @keyframes scaleUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .success-icon {
+    width: 80px; height: 80px; margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--vx-green), #22C55E);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 36px; color: white;
+    animation: bounceIn 0.5s 0.2s both;
+  }
+  @keyframes bounceIn {
+    0% { transform: scale(0); } 60% { transform: scale(1.15); } 100% { transform: scale(1); }
+  }
+  .success-title { font-family: var(--font-display); font-size: 26px; color: var(--vx-dark); margin-bottom: 8px; }
+  .success-text { font-size: 14px; color: var(--vx-gray-600); line-height: 1.6; margin-bottom: 24px; }
+  .success-details {
+    background: var(--vx-gray-50); border-radius: 12px; padding: 16px;
+    font-size: 13px; color: var(--vx-gray-600); text-align: left;
+  }
+  .success-details div { padding: 4px 0; }
+  .success-details strong { color: var(--vx-dark); }
+
+  /* ===== ERROR / EXPIRED ===== */
+  .error-page {
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 70vh; text-align: center; padding: 40px 24px;
+  }
+  .error-page.show { display: flex; }
+  .error-icon { font-size: 64px; margin-bottom: 20px; }
+  .error-title { font-family: var(--font-display); font-size: 28px; color: var(--vx-dark); margin-bottom: 8px; }
+  .error-text { font-size: 14px; color: var(--vx-gray-600); max-width: 400px; line-height: 1.6; }
+
+  /* ===== FOOTER ===== */
+  .page-footer {
+    text-align: center; padding: 24px;
+    font-size: 11px; color: var(--vx-gray-400);
+    border-top: 1px solid var(--vx-gray-200);
+    margin-top: 40px;
+  }
+  .page-footer a { color: var(--vx-blue); text-decoration: none; }
+
+  /* ===== ALREADY SIGNED STATE ===== */
+  .signed-banner {
+    background: linear-gradient(135deg, #065F46, #059669);
+    color: white; text-align: center; padding: 20px;
+    border-radius: 16px; margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(5,150,105,0.2);
+  }
+  .signed-banner-title { font-family: var(--font-display); font-size: 22px; margin-bottom: 4px; }
+  .signed-banner-sub { font-size: 13px; opacity: 0.8; }
+  .signed-sig-display {
+    background: white; border: 2px solid var(--vx-green); border-radius: 12px;
+    padding: 16px; margin-top: 20px;
+  }
+  .signed-sig-display img { max-width: 300px; max-height: 100px; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; gap: 12px; text-align: center; }
+    .info-grid { grid-template-columns: 1fr; }
+    .sig-fields { grid-template-columns: 1fr; }
+    .quote-title { font-size: 22px; }
+    .items-table th, .items-table td { padding: 10px 14px; font-size: 12px; }
+    .sig-body { padding: 20px; }
+    .success-card { padding: 32px 24px; }
+  }
+
+  @media print {
+    body { background: white; }
+    .page-header { break-after: avoid; }
+    .page-header::after { display: none; }
+    .main-content { padding: 0; animation: none; opacity: 1; transform: none; }
+    .page-footer, .sig-section, .signed-banner, .header-badge, .success-overlay { display: none !important; }
+    .quote-header-card, .items-card, .totals-card, .optional-card {
+      box-shadow: none; border: 1px solid #ccc; break-inside: avoid;
+    }
+    .items-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .totals-grand { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loader-screen" id="loader">
+  <div class="loader-logo">VX-360</div>
+  <div class="loader-spinner"></div>
+</div>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="header-inner">
+    <div class="header-brand">VX<span>-360</span> NETWORKS</div>
+    <div class="header-badge"><div class="dot"></div> Secure Quote Portal</div>
+  </div>
+</div>
+
+<!-- Error State -->
+<div class="error-page" id="errorPage">
+  <div class="error-icon" id="errorIcon">🔍</div>
+  <div class="error-title" id="errorTitle">Quote Not Found</div>
+  <div class="error-text" id="errorText">This quote link may have expired or is invalid. Please contact your VX-360 representative for assistance.</div>
+</div>
+
+<!-- Main Content (populated by JS) -->
+<div class="main-content" id="mainContent" style="display:none"></div>
+
+<!-- Success Overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-card">
+    <div class="success-icon">✓</div>
+    <div class="success-title">Quote Accepted!</div>
+    <div class="success-text">Thank you for choosing VX-360 Networks. Your signed quote has been recorded and our team has been notified. We'll be in touch shortly to get started.</div>
+    <div class="success-details" id="successDetails"></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="page-footer">
+  <div>VX-360 Networks, Inc &bull; (855) 360-9360 &bull; <a href="https://vx360net.com">vx360net.com</a></div>
+  <div style="margin-top:4px">This is a secure document. Your information is encrypted and protected.</div>
+</div>
+
+<script>
+// ===== CONFIGURATION =====
+// IMPORTANT: Replace these with your actual Supabase credentials
+const SUPABASE_URL = 'https://rjlxaticeeqasjznbkqn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqbHhhdGljZWVxYXNqem5ia3FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MjYyNTYsImV4cCI6MjA4NzEwMjI1Nn0.l-SfbKnuJOyuH0qJiM-GU6vupu7mHo4dCY-yCgOuLvk';
+
+let db = null;
+try {
+  const { createClient } = window.supabase || {};
+  if (createClient) {
+    db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase connected');
+  } else {
+    console.error('Supabase library not loaded');
+  }
+} catch(e) {
+  console.error('Supabase init error:', e);
+}
+
+// ===== HELPERS =====
+function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function fmt(n) { return (parseFloat(n) || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+// ===== INIT =====
+async function init() {
+  if (!db) {
+    showError('⚠️', 'Connection Error', 'Could not connect to the database. Please try refreshing the page.');
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+
+  if (!token) {
+    showError('🔗', 'Invalid Link', 'No quote token was provided. Please use the link from your email.');
+    return;
+  }
+
+  try {
+    // Load quote from Supabase
+    const { data: quote, error } = await db
+      .from('quotes')
+      .select('*')
+      .eq('token', token)
+      .single();
+
+    if (error || !quote) {
+      showError('🔍', 'Quote Not Found', 'This quote link may have expired or is invalid. Please contact your VX-360 representative for assistance.');
+      return;
+    }
+
+    // Check if expired
+    if (quote.expiration_date && new Date(quote.expiration_date + 'T23:59:59') < new Date()) {
+      if (quote.status !== 'signed') {
+        await db.from('quotes').update({ status: 'expired' }).eq('id', quote.id);
+        quote.status = 'expired';
+      }
+    }
+
+    // Log this view
+    await db.from('quote_views').insert({
+      quote_id: quote.id,
+      ip_address: '',  // Could use an IP service
+      user_agent: navigator.userAgent,
+      referrer: document.referrer || ''
+    });
+
+    // Update view count
+    await db.from('quotes').update({
+      view_count: (quote.view_count || 0) + 1,
+      first_viewed_at: quote.first_viewed_at || new Date().toISOString(),
+      last_viewed_at: new Date().toISOString(),
+      status: quote.status === 'sent' ? 'viewed' : quote.status
+    }).eq('id', quote.id);
+
+    // Render the quote
+    renderQuote(quote);
+  } catch(e) {
+    showError('⚠️', 'Something Went Wrong', 'We couldn\'t load this quote. Please try again or contact VX-360 at (855) 360-9360.');
+    console.error(e);
+  }
+}
+
+function showError(icon, title, text) {
+  document.getElementById('loader').classList.add('hide');
+  document.getElementById('errorIcon').textContent = icon;
+  document.getElementById('errorTitle').textContent = title;
+  document.getElementById('errorText').textContent = text;
+  document.getElementById('errorPage').classList.add('show');
+}
+
+function renderQuote(quote) {
+  currentQuote = quote;
+  const content = document.getElementById('mainContent');
+  const lineItems = typeof quote.line_items === 'string' ? JSON.parse(quote.line_items) : (quote.line_items || []);
+  const optionalItems = typeof quote.optional_items === 'string' ? JSON.parse(quote.optional_items) : (quote.optional_items || []);
+
+  const quoteDate = quote.quote_date ? new Date(quote.quote_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+  const expDate = quote.expiration_date ? new Date(quote.expiration_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+
+  let statusBadge = '';
+  if (quote.status === 'signed') statusBadge = '<div class="quote-status-badge badge-signed">✓ Accepted & Signed</div>';
+  else if (quote.status === 'expired') statusBadge = '<div class="quote-status-badge badge-expired">✕ Expired</div>';
+  else statusBadge = '<div class="quote-status-badge badge-pending">⏳ Awaiting Acceptance</div>';
+
+  // Build line items table rows
+  let lineRowsHtml = '';
+  lineItems.forEach(function(item) {
+    const discLabel = item.discount > 0 ? ' <span class="item-disc">(-' + item.discount + '%)</span>' : '';
+    lineRowsHtml += '<tr>'
+      + '<td><span class="item-name">' + esc(item.name) + '</span>' + discLabel + '</td>'
+      + '<td>' + item.qty + '</td>'
+      + '<td>' + (item.monthly > 0 ? '$' + fmt(item.monthly) + '/mo' : '—') + '</td>'
+      + '<td>' + (item.onetime > 0 ? '$' + fmt(item.onetime) : '—') + '</td>'
+      + '</tr>';
+  });
+  lineRowsHtml += '<tr class="subtotal-row"><td colspan="2">Subtotals</td>'
+    + '<td style="color:var(--vx-red)">$' + fmt(quote.monthly_recurring) + '/mo</td>'
+    + '<td>$' + fmt(quote.onetime_fees) + '</td></tr>';
+
+  // Optional items
+  let optionalHtml = '';
+  if (optionalItems.length > 0) {
+    let optRows = '';
+    optionalItems.forEach(function(item) {
+      optRows += '<tr><td><span class="item-name">' + esc(item.name) + '</span></td><td>' + item.qty + '</td>'
+        + '<td>' + (item.monthly > 0 ? '$' + fmt(item.monthly) + '/mo' : '—') + '</td>'
+        + '<td>' + (item.onetime > 0 ? '$' + fmt(item.onetime) : '—') + '</td></tr>';
+    });
+    optionalHtml = '<div class="optional-card"><div class="optional-header"><div class="optional-title">☐ Optional Installation Services</div></div>'
+      + '<div class="optional-note">The following services are available upon request and are not included in the quoted total.</div>'
+      + '<table class="items-table"><thead><tr><th>Description</th><th>Qty</th><th>Monthly</th><th>One-Time</th></tr></thead>'
+      + '<tbody>' + optRows + '</tbody></table></div>';
+  }
+
+  // Totals
+  let totalsHtml = '<div class="totals-card">'
+    + '<div class="totals-row"><span class="totals-label">Monthly Recurring</span><span class="totals-value recurring">$' + fmt(quote.monthly_recurring) + '/mo</span></div>'
+    + '<div class="totals-row"><span class="totals-label">One-Time Fees</span><span class="totals-value">$' + fmt(quote.onetime_fees) + '</span></div>'
+    + '<div class="totals-row totals-grand"><span class="totals-label">Total Due at Signing</span><span class="totals-value">$' + fmt(quote.total_due) + '</span></div>'
+    + '</div>';
+
+  // Signature section
+  let sigHtml = '';
+  if (quote.status === 'signed') {
+    const signedDate = new Date(quote.signed_at).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const signedTime = new Date(quote.signed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    sigHtml = '<div class="signed-banner"><div class="signed-banner-title">✓ Quote Accepted</div>'
+      + '<div class="signed-banner-sub">Signed by ' + esc(quote.signer_name) + (quote.signer_title ? ', ' + esc(quote.signer_title) : '') + ' on ' + signedDate + ' at ' + signedTime + '</div></div>';
+    if (quote.signature_data) {
+      sigHtml += '<div class="signed-sig-display"><img src="' + quote.signature_data + '" alt="Signature"></div>';
+    }
+  } else if (quote.status === 'expired') {
+    sigHtml = '<div class="signed-banner" style="background:linear-gradient(135deg,#991B1B,#DC2626)"><div class="signed-banner-title">Quote Expired</div>'
+      + '<div class="signed-banner-sub">This quote expired on ' + expDate + '. Please contact your VX-360 representative for an updated quote.</div></div>';
+  } else {
+    sigHtml = '<div class="sig-section"><div class="sig-header"><div class="sig-header-title">Accept This Quote</div>'
+      + '<div class="sig-header-sub">Please review the quote above, then sign below to accept</div></div>'
+      + '<div class="sig-body">'
+      + '<div class="sig-fields">'
+      + '<div class="sig-field"><label>Full Name *</label><input type="text" id="sigName" placeholder="Your full name"></div>'
+      + '<div class="sig-field"><label>Title / Position</label><input type="text" id="sigTitle" placeholder="e.g., Office Manager"></div>'
+      + '</div>'
+      + '<div class="sig-pad-label">Signature *</div>'
+      + '<div class="sig-pad-wrap" id="sigPadWrap">'
+      + '<canvas id="sigCanvas" class="sig-pad-canvas"></canvas>'
+      + '<div class="sig-pad-placeholder" id="sigPlaceholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/><path d="M19.5 7.125L16.862 4.487"/></svg><span>Draw your signature here</span></div>'
+      + '<button class="sig-clear" id="sigClear" style="display:none">Clear</button>'
+      + '</div>'
+      + '<div class="sig-terms">'
+      + 'By signing below, you acknowledge that you have reviewed the quote and agree to the services and pricing described above. This electronic signature constitutes a legally binding acceptance of this quote.'
+      + '<label class="sig-terms-check"><input type="checkbox" id="sigAgree"><span>I agree to accept this quote and authorize VX-360 Networks to proceed with the described services.</span></label>'
+      + '</div>'
+      + '<button class="sig-submit" id="sigSubmit" disabled onclick="submitSignature(\'' + quote.id + '\')">Accept & Sign Quote</button>'
+      + '</div></div>';
+  }
+
+  content.innerHTML = '<div class="quote-header-card">'
+    + '<div class="quote-meta-row"><div><div class="quote-title">Hosted PBX Quote</div><div class="quote-id">' + esc(quote.quote_number) + '</div></div>' + statusBadge + '</div>'
+    + '<div class="info-grid">'
+    + '<div class="info-block"><div class="info-label">Prepared For</div><div class="info-value">' + esc(quote.company) + '<small>' + esc(quote.contact_name) + '</small></div></div>'
+    + '<div class="info-block"><div class="info-label">Prepared By</div><div class="info-value">Kenneth White<small>VX-360 Networks, Inc</small></div></div>'
+    + '<div class="info-block"><div class="info-label">Quote Date</div><div class="info-value">' + quoteDate + (expDate ? '<small>Valid until ' + expDate + '</small>' : '') + '</div></div>'
+    + '</div></div>'
+    + '<div class="items-card"><div class="items-header"><div class="items-header-title">Services & Pricing</div><div class="items-count">' + lineItems.length + ' items</div></div>'
+    + '<table class="items-table"><thead><tr><th>Description</th><th>Qty</th><th>Monthly</th><th>One-Time</th></tr></thead>'
+    + '<tbody>' + lineRowsHtml + '</tbody></table></div>'
+    + optionalHtml
+    + totalsHtml
+    + '<div style="text-align:center;margin-bottom:24px"><button onclick="downloadQuotePDF()" style="display:inline-flex;align-items:center;gap:8px;padding:12px 28px;font-size:14px;font-weight:700;font-family:var(--font-body);color:var(--vx-blue);background:white;border:2px solid var(--vx-blue);border-radius:10px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'#e3f2fd\'" onmouseout="this.style.background=\'white\'">📄 Download Quote as PDF</button></div>'
+    + sigHtml;
+
+  content.style.display = 'block';
+  document.getElementById('loader').classList.add('hide');
+
+  // Initialize signature pad if quote is pending
+  if (quote.status !== 'signed' && quote.status !== 'expired') {
+    initSignaturePad();
+  }
+}
+
+// ===== SIGNATURE PAD =====
+let signaturePad = null;
+let currentQuote = null;
+
+function initSignaturePad() {
+  const canvas = document.getElementById('sigCanvas');
+  if (!canvas) return;
+
+  // Set canvas size
+  function resizeCanvas() {
+    const wrap = document.getElementById('sigPadWrap');
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = wrap.offsetWidth * ratio;
+    canvas.height = 160 * ratio;
+    canvas.style.height = '160px';
+    canvas.getContext('2d').scale(ratio, ratio);
+    if (signaturePad) signaturePad.clear();
+  }
+
+  signaturePad = new SignaturePad(canvas, {
+    backgroundColor: 'rgba(255,255,255,0)',
+    penColor: '#1E293B',
+    minWidth: 1.5,
+    maxWidth: 3
+  });
+
+  signaturePad.addEventListener('beginStroke', function() {
+    document.getElementById('sigPlaceholder').classList.add('hidden');
+    document.getElementById('sigClear').style.display = 'block';
+    document.getElementById('sigPadWrap').classList.add('active');
+    validateForm();
+  });
+  signaturePad.addEventListener('endStroke', validateForm);
+
+  document.getElementById('sigClear').addEventListener('click', function() {
+    signaturePad.clear();
+    document.getElementById('sigPlaceholder').classList.remove('hidden');
+    document.getElementById('sigClear').style.display = 'none';
+    document.getElementById('sigPadWrap').classList.remove('active');
+    validateForm();
+  });
+
+  document.getElementById('sigName').addEventListener('input', validateForm);
+  document.getElementById('sigAgree').addEventListener('change', validateForm);
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+}
+
+function validateForm() {
+  const name = document.getElementById('sigName').value.trim();
+  const agreed = document.getElementById('sigAgree').checked;
+  const signed = signaturePad && !signaturePad.isEmpty();
+  document.getElementById('sigSubmit').disabled = !(name && agreed && signed);
+}
+
+// ===== SUBMIT SIGNATURE =====
+async function submitSignature(quoteId) {
+  const btn = document.getElementById('sigSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  const name = document.getElementById('sigName').value.trim();
+  const title = document.getElementById('sigTitle').value.trim();
+  const sigData = signaturePad.toDataURL('image/png');
+
+  try {
+    const { error } = await db.from('quotes').update({
+      status: 'signed',
+      signed_at: new Date().toISOString(),
+      signer_name: name,
+      signer_title: title,
+      signature_data: sigData,
+      signer_ip: '',
+      signer_browser: navigator.userAgent
+    }).eq('id', quoteId);
+
+    if (error) throw error;
+
+    // Send signed confirmation to both parties
+    try {
+      await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quoteNumber: currentQuote ? currentQuote.quote_number : '',
+          company: currentQuote ? currentQuote.company : '',
+          contactName: currentQuote ? currentQuote.contact_name : '',
+          contactEmail: currentQuote ? currentQuote.contact_email : '',
+          signerName: name,
+          signerTitle: title,
+          signedAt: new Date().toISOString(),
+          signatureData: sigData,
+          monthlyRecurring: currentQuote ? currentQuote.monthly_recurring : 0,
+          onetimeFees: currentQuote ? currentQuote.onetime_fees : 0,
+          totalDue: currentQuote ? currentQuote.total_due : 0,
+          lineItems: currentQuote ? currentQuote.line_items : []
+        })
+      });
+    } catch(notifyErr) {
+      console.log('Notification send attempted:', notifyErr);
+    }
+
+    // Show success
+    const details = document.getElementById('successDetails');
+    details.innerHTML = '<div><strong>Signed by:</strong> ' + esc(name) + (title ? ' (' + esc(title) + ')' : '') + '</div>'
+      + '<div><strong>Date:</strong> ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+      + ' at ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</div>'
+      + '<div><strong>Reference:</strong> Stored securely by VX-360 Networks</div>';
+    document.getElementById('successOverlay').classList.add('show');
+
+  } catch(e) {
+    console.error('Signature submit error:', e);
+    btn.disabled = false;
+    btn.textContent = 'Accept & Sign Quote';
+    alert('There was an error submitting your signature. Please try again.');
+  }
+}
+
+// ===== DOWNLOAD PDF =====
+function downloadQuotePDF() {
+  // Hide the signature section and download button for print
+  const sigSection = document.querySelector('.sig-section');
+  const signedBanner = document.querySelector('.signed-banner');
+  const dlBtn = event.target.closest('div');
+  const footer = document.querySelector('.page-footer');
+
+  if (dlBtn) dlBtn.style.display = 'none';
+  if (sigSection) sigSection.style.display = 'none';
+  if (footer) footer.style.display = 'none';
+
+  window.print();
+
+  // Restore after print
+  setTimeout(function() {
+    if (dlBtn) dlBtn.style.display = '';
+    if (sigSection) sigSection.style.display = '';
+    if (footer) footer.style.display = '';
+  }, 500);
+}
+
+// ===== START =====
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "vx360-accept",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "jspdf": "^2.5.1"
+  }
+}
