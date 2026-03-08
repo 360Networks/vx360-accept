@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Payment Authorization — 360 Networks</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: #f1f5f9;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 540px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1a4a8a 100%);
+    padding: 28px 32px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .header-logo {
+    font-size: 28px;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .header-logo span { color: #818cf8; }
+  .header-info { flex: 1; }
+  .header-info h1 {
+    font-size: 16px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.2;
+  }
+  .header-info p {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+  }
+  .lock-badge {
+    background: rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    width: fit-content;
+  }
+  .inv-summary {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 18px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .inv-summary-row { display: flex; flex-direction: column; gap: 2px; }
+  .inv-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.8px; }
+  .inv-value { font-size: 14px; font-weight: 700; color: #1e293b; }
+  .inv-amount { font-size: 22px; font-weight: 900; color: #0ea5e9; }
+  .body { padding: 28px; }
+  .section-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .field { margin-bottom: 14px; }
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+  input[type="text"], input[type="email"], input[type="tel"], input[type="number"] {
+    width: 100%;
+    padding: 11px 13px;
+    border: 2px solid #e5e7eb;
+    border-radius: 9px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+    background: white;
+  }
+  input:focus { border-color: #0ea5e9; }
+  input::placeholder { color: #9ca3af; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .amount-wrap { position: relative; }
+  .amount-wrap span {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
+  }
+  .amount-wrap input { padding-left: 26px; }
+  .card-number-input { letter-spacing: 2px; }
+  .divider { border: none; border-top: 1px solid #e5e7eb; margin: 22px 0; }
+  .auth-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .auth-box label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    font-weight: 400;
+    color: #374151;
+    line-height: 1.6;
+  }
+  .auth-box input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    cursor: pointer;
+    accent-color: #0ea5e9;
+  }
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.15s;
+  }
+  .btn-submit:hover { opacity: 0.92; }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .secure-note {
+    text-align: center;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 12px;
+  }
+  .error-banner {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #dc2626;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  /* ── Success screen ── */
+  #successScreen {
+    display: none;
+    padding: 48px 32px;
+    text-align: center;
+  }
+  .success-icon {
+    width: 72px;
+    height: 72px;
+    background: #dcfce7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 20px;
+  }
+  #successScreen h2 { font-size: 22px; font-weight: 900; color: #1e293b; }
+  #successScreen p { font-size: 14px; color: #64748b; margin-top: 10px; line-height: 1.6; }
+  .success-ref {
+    margin-top: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #475569;
+  }
+
+  @media (max-width: 480px) {
+    .header { padding: 22px 20px; }
+    .body { padding: 20px; }
+    .inv-summary { padding: 14px 20px; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .grid-3 .field:last-child { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">360<span>°</span></div>
+    <div class="header-info">
+      <h1>Secure Credit Card Authorization</h1>
+      <p>VoIP Xchange 360, Inc. &mdash; 360 Networks</p>
+      <div class="lock-badge">🔒 Submitted securely to 360 Networks staff</div>
+    </div>
+  </div>
+
+  <!-- Invoice summary bar -->
+  <div class="inv-summary" id="invSummary">
+    <div class="inv-summary-row">
+      <span class="inv-label">Invoice</span>
+      <span class="inv-value" id="dispInvoice">—</span>
+    </div>
+    <div class="inv-summary-row">
+      <span class="inv-label">Customer</span>
+      <span class="inv-value" id="dispCustomer">—</span>
+    </div>
+    <div class="inv-summary-row">
+      <span class="inv-label">Due Date</span>
+      <span class="inv-value" id="dispDue">—</span>
+    </div>
+    <div class="inv-summary-row" style="text-align:right">
+      <span class="inv-label">Balance Due</span>
+      <span class="inv-amount" id="dispAmount">—</span>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="body" id="formBody">
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- Card details -->
+    <div class="section-label">Card Information</div>
+
+    <div class="field">
+      <label>Cardholder Name *</label>
+      <input type="text" id="cc_name" placeholder="Name as it appears on card" autocomplete="cc-name">
+    </div>
+
+    <div class="field">
+      <label>Card Number *</label>
+      <input type="text" id="cc_number" class="card-number-input" placeholder="XXXX  XXXX  XXXX  XXXX" maxlength="19" autocomplete="cc-number"
+        oninput="formatCardNumber(this)">
+    </div>
+
+    <div class="grid-3">
+      <div class="field">
+        <label>Expiration *</label>
+        <input type="text" id="cc_exp" placeholder="MM/YY" maxlength="5" autocomplete="cc-exp"
+          oninput="var v=this.value.replace(/[^0-9]/g,'');if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2,4);this.value=v">
+      </div>
+      <div class="field">
+        <label>CVV *</label>
+        <input type="text" id="cc_cvv" placeholder="CVV" maxlength="4" autocomplete="cc-csc"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div class="field">
+        <label>Billing Zip *</label>
+        <input type="text" id="cc_zip" placeholder="75001" maxlength="10"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Amount to Authorize *</label>
+      <div class="amount-wrap">
+        <span>$</span>
+        <input type="number" id="cc_amount" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Contact info -->
+    <div class="section-label">Your Contact Information</div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="cc_contact" placeholder="Your name">
+      </div>
+      <div class="field">
+        <label>Phone</label>
+        <input type="tel" id="cc_phone" placeholder="(214) 555-1234">
+      </div>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="cc_email" placeholder="you@company.com">
+    </div>
+
+    <hr class="divider">
+
+    <!-- Authorization -->
+    <div class="auth-box">
+      <label>
+        <input type="checkbox" id="cc_authorize">
+        I authorize VoIP Xchange 360, Inc. to charge the credit card listed above in the amount shown. I confirm that I am the authorized cardholder and agree that this transaction is valid and final.
+      </label>
+    </div>
+
+    <!-- Submit -->
+    <button class="btn-submit" id="submitBtn" onclick="submitCCAuth()">
+      🔒 Submit Authorization
+    </button>
+    <div class="secure-note">
+      Your information is transmitted directly to an authorized 360 Networks representative for manual processing. We do not store your card number.
+    </div>
+  </div>
+
+  <!-- Success screen -->
+  <div id="successScreen">
+    <div class="success-icon">✅</div>
+    <h2>Authorization Received!</h2>
+    <p>Thank you. Your credit card authorization has been securely sent to 360 Networks. A representative will process your payment and confirm via email.</p>
+    <div class="success-ref" id="successRef"></div>
+    <p style="margin-top:20px;font-size:12px;color:#94a3b8">Questions? Call (855) 360-9360 or email <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b8d9dbdbd7cdd6ccd1d6dff8cec08b8e88d6ddcc96dbd7d5">[email&#160;protected]</a></p>
+  </div>
+
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ── Read URL params ────────────────────────────────────────────────────────────
+var params = new URLSearchParams(window.location.search);
+var invNum   = params.get('inv')  || '';
+var invAmt   = params.get('amt')  || '';
+var invCust  = params.get('cust') || '';
+var invDue   = params.get('due')  || '';
+
+// Populate summary bar
+document.getElementById('dispInvoice').textContent  = invNum  || '—';
+document.getElementById('dispCustomer').textContent = invCust || '—';
+document.getElementById('dispDue').textContent      = invDue  ? formatDate(invDue) : '—';
+document.getElementById('dispAmount').textContent   = invAmt  ? '$' + parseFloat(invAmt).toFixed(2) : '—';
+
+// Pre-fill amount
+if (invAmt) document.getElementById('cc_amount').value = parseFloat(invAmt).toFixed(2);
+
+function formatDate(d) {
+  if (!d) return '';
+  var parts = d.split('-');
+  if (parts.length === 3) return parts[1] + '/' + parts[2] + '/' + parts[0];
+  return d;
+}
+
+function formatCardNumber(input) {
+  var v = input.value.replace(/[^0-9]/g, '').substring(0, 16);
+  var parts = [];
+  for (var i = 0; i < v.length; i += 4) parts.push(v.substring(i, i + 4));
+  input.value = parts.join(' ');
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────────
+async function submitCCAuth() {
+  var errorBanner = document.getElementById('errorBanner');
+  errorBanner.style.display = 'none';
+
+  var name    = document.getElementById('cc_name').value.trim();
+  var number  = document.getElementById('cc_number').value.trim();
+  var exp     = document.getElementById('cc_exp').value.trim();
+  var cvv     = document.getElementById('cc_cvv').value.trim();
+  var zip     = document.getElementById('cc_zip').value.trim();
+  var amount  = document.getElementById('cc_amount').value.trim();
+  var contact = document.getElementById('cc_contact').value.trim();
+  var phone   = document.getElementById('cc_phone').value.trim();
+  var email   = document.getElementById('cc_email').value.trim();
+  var auth    = document.getElementById('cc_authorize').checked;
+
+  // Validate
+  var errors = [];
+  if (!name)   errors.push('Cardholder name is required');
+  if (!number || number.replace(/\s/g,'').length < 13) errors.push('Valid card number is required');
+  if (!exp || !/^\d{2}\/\d{2}$/.test(exp)) errors.push('Expiration date must be MM/YY');
+  if (!cvv || cvv.length < 3) errors.push('CVV is required');
+  if (!zip)   errors.push('Billing zip code is required');
+  if (!amount || isNaN(parseFloat(amount))) errors.push('Amount is required');
+  if (!auth)  errors.push('You must check the authorization box to proceed');
+
+  if (errors.length > 0) {
+    errorBanner.textContent = errors[0];
+    errorBanner.style.display = 'block';
+    errorBanner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  var now = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+
+  // ── POST to Formspree ──────────────────────────────────────────────────────
+  // IMPORTANT: Replace YOUR_FORMSPREE_ID below with your actual Formspree form ID
+  // Sign up free at formspree.io → New Form → copy the ID from the endpoint URL
+  var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mnjgnekz';
+
+  var formData = new FormData();
+  formData.append('_subject',        '💳 CC Auth: Invoice ' + invNum + ' — ' + invCust + ' — $' + parseFloat(amount).toFixed(2));
+  formData.append('invoice_number',  invNum);
+  formData.append('customer_name',   invCust);
+  formData.append('amount_to_charge','$' + parseFloat(amount).toFixed(2));
+  formData.append('cardholder_name', name);
+  formData.append('card_number',     number);
+  formData.append('expiration',      exp);
+  formData.append('cvv',             cvv);
+  formData.append('billing_zip',     zip);
+  formData.append('contact_name',    contact || '(not provided)');
+  formData.append('contact_phone',   phone   || '(not provided)');
+  formData.append('contact_email',   email   || '(not provided)');
+  formData.append('submitted_at',    now + ' CST');
+  formData.append('authorized_by',   'Customer checked authorization box on ' + now + ' CST');
+
+  try {
+    var res = await fetch(FORMSPREE_ENDPOINT, {
+      method: 'POST',
+      body: formData,
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (res.ok) {
+      document.getElementById('formBody').style.display = 'none';
+      var ss = document.getElementById('successScreen');
+      ss.style.display = 'block';
+      document.getElementById('successRef').innerHTML =
+        '<strong>Invoice:</strong> ' + (invNum || '—') + ' &nbsp;&bull;&nbsp; ' +
+        '<strong>Amount:</strong> $' + parseFloat(amount).toFixed(2) + ' &nbsp;&bull;&nbsp; ' +
+        '<strong>Submitted:</strong> ' + now + ' CST';
+    } else {
+      var data = await res.json();
+      throw new Error(data.error || 'Submission failed. Please try again or call (855) 360-9360.');
+    }
+  } catch(e) {
+    errorBanner.textCon
