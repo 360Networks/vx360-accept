@@ -1,7 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/cc-pay", "destination": "/public/cc-pay.html" },
+    { "source": "/cc-pay", "destination": "/cc-pay.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
